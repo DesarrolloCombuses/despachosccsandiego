@@ -9,16 +9,7 @@ const SONAR_CANCEL_KEY = PLANILLA_SUPABASE_ANON_KEY;
 const OUT_OF_LIST_WEBHOOK_URL = "https://connect.pabbly.com/webhook-listener/webhook/IjU3NjEwNTY4MDYzMDA0MzQ1MjZjNTUzMiI_3D_pc/IjU3NjcwNTZlMDYzNjA0MzI1MjY0NTUzMDUxMzQi_pc";
 const PLANILLA_OPTIONAL_REG_ID_COLUMNS = ["reg_id", "regid", "regId"];
 const SONAR_ITINERARIES = [
-  { id: "3385", grupo: "AEROPUERTO", nombre: "Aeropuerto-San Diego-Tunel" },
-  { id: "3387", grupo: "NUTIBARA", nombre: "Nutibara-Aeropuerto-Autopista" },
-  { id: "3394", grupo: "NUTIBARA", nombre: "Nutibara-Aeropuerto-Variante Palmas" },
-  { id: "3395", grupo: "SANDIEGO", nombre: "San Diego-Aeropuerto-Variante Palmas" },
-  { id: "4413", grupo: "AEROPUERTO", nombre: "Aeropuerto-Exposiciones" },
-  { id: "4501", grupo: "AEROPUERTO", nombre: "Aeropuerto-autopista-terminalnorte" },
-  { id: "4502", grupo: "EXPOSICIONES", nombre: "Nutibara-exposiciones-tunel-aeropuerto" },
-  { id: "4503", grupo: "AEROPUERTO", nombre: "Aeropuerto-Tunel-Exposiciones-Nutibara" },
-  { id: "4504", grupo: "SANDIEGO", nombre: "ccsandiego-tunel-aeropuerto" },
-  { id: "4505", grupo: "SANDIEGO", nombre: "Almacentro-Tunel-Aeropuerto" }
+  { id: "4504", grupo: "SANDIEGO", nombre: "ccsandiego-tunel-aeropuerto" }
 ];
 const PLANILLA_TABLE_NAME = "planilla_afiliados_2";
 const VEHICULOS_SONAR_TABLE_NAME = "vehiculossonar";
