@@ -4,7 +4,7 @@
 //   - APIs (Supabase, Google Sheets CSV, CDNs externos, Sonar Flask): pasan directo a la red, NUNCA se cachean.
 //   - Auto-update: skipWaiting + clients.claim para que la nueva version reemplace a la anterior al instante.
 
-const VERSION = "ccsd-mobile-v1.0.1";
+const VERSION = "ccsd-mobile-v1.0.9";
 const CACHE_NAME = `planilla-${VERSION}`;
 const NETWORK_TIMEOUT_MS = 4000;
 
@@ -12,9 +12,9 @@ const PRECACHE_URLS = [
   "./",
   "./index.html",
   "./manifest.webmanifest",
-  "./js/functions.js",
-  "./js/main.js",
-  "./css/styles.css",
+  "./js/functions.js?v=1.0.9",
+  "./js/main.js?v=1.0.9",
+  "./css/styles.css?v=1.0.9",
   "./icons/icon-192.svg",
   "./icons/icon-512.svg",
   "./icons/icon-maskable.svg",

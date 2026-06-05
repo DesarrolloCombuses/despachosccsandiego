@@ -29,7 +29,7 @@ n" href="icons/icon-192.svg">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
-<link rel="stylesheet" href="css/styles.css">
+<link rel="stylesheet" href="css/styles.css?v=1.0.9">
 </head>
 <body>
 
@@ -85,12 +85,13 @@ n" href="icons/icon-192.svg">
           <div class="tab hidden" data-tab="planilla-afiliados">Tabla planilla</div>
           <div class="tab hidden" data-tab="llegadas-aeropuerto">Llegadas Aeropuerto</div>
           <div class="tab hidden" data-tab="llegadas-terminalnorte">Llegadas Terminalnorte</div>
-          <div class="tab active" data-tab="llegadas-san-diego">Llegadas Almacentro</div>
+          <div class="tab hidden" data-tab="llegadas-san-diego">Llegadas Almacentro</div>
           <div class="tab hidden" data-tab="llegadas-nutibara">Llegadas Nutibara</div>
           <div class="tab hidden" data-tab="no-despacho">No tuvieron despacho</div>
           <div class="tab hidden" data-tab="fuera-lista">Fuera de lista</div>
           <div class="tab hidden" data-tab="vehiculos-sonar">Vehiculos Sonar</div>
-          <div class="tab" data-tab="despachos-sonar">Despachos Sonar</div>
+          <div class="tab" data-tab="despacho-manual">Realizar despacho</div>
+          <div class="tab active" data-tab="despachos-sonar">Despachos Sonar</div>
           <div class="tab hidden" data-tab="mapa-vehiculos">Mapa vehiculos</div>
           <div class="tab hidden" data-tab="tabla-llegadas">Tabla llegadas</div>
           <div class="tab" data-tab="historial-despachos">Historial despachos</div>
@@ -230,7 +231,7 @@ n" href="icons/icon-192.svg">
         </div>
 
         <!-- Contenido Llegadas Almacentro -->
-        <div id="tab-llegadas-san-diego" class="tab-content active">
+        <div id="tab-llegadas-san-diego" class="tab-content">
           <div class="row mobile-filters" style="margin-bottom:10px">
             <h3 id="llegadasSanDiegoTitle" style="margin:0">Ultimas Llegadas Almacentro (101)</h3>
             <button class="btn btn-ghost" id="btnRefreshLlegadasSanDiego">Actualizar</button>
@@ -431,8 +432,19 @@ n" href="icons/icon-192.svg">
           </div>
         </div>
 
+        <!-- Contenido Realizar despacho (manual) -->
+        <div id="tab-despacho-manual" class="tab-content">
+          <div class="row" style="margin-bottom:10px">
+            <h3 style="margin:0">Realizar despacho</h3>
+          </div>
+          <div class="muted" style="margin:0 0 16px 0">
+            Completa el formulario para enviar un despacho. Al confirmar el envio se te llevara automaticamente al Historial de despachos.
+          </div>
+          <button class="btn btn-success" id="btnOpenManualDispatchForm">Abrir formulario de despacho</button>
+        </div>
+
         <!-- Contenido Despachos Sonar -->
-        <div id="tab-despachos-sonar" class="tab-content">
+        <div id="tab-despachos-sonar" class="tab-content active">
           <div class="row mobile-filters" style="margin-bottom:10px">
             <h3 style="margin:0">Despachos en curso</h3>
             <button class="btn btn-primary" id="btnRefreshDespachosSonar">Actualizar</button>
@@ -849,11 +861,14 @@ n" href="icons/icon-192.svg">
   <div class="modal-card">
     <h3 id="manualDispatchTitle" class="modal-title">Despacho manual</h3>
     <div class="modal-sub">Enviar despacho manual a sonar-dispatch para cualquier vehiculo.</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
+    <div class="dispatch-form-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
       <div>
         <strong>Interno *</strong>
-        <input id="manualDispatchInterno" type="text" list="manualDispatchInternoList" placeholder="Buscar interno..." />
-        <datalist id="manualDispatchInternoList"></datalist>
+        <div class="combo" id="manualDispatchInternoCombo">
+          <input id="manualDispatchInterno" type="text" autocomplete="off" placeholder="Buscar o seleccionar interno..." />
+          <button type="button" class="combo-arrow" id="manualDispatchInternoArrow" aria-label="Ver lista de internos" tabindex="-1">&#9662;</button>
+          <div class="combo-panel hidden" id="manualDispatchInternoPanel"></div>
+        </div>
       </div>
       <div><strong>Base</strong><input id="manualDispatchBase" type="text" placeholder="Base" readonly /></div>
       <div><strong>MID *</strong><input id="manualDispatchMid" type="text" placeholder="MID" readonly /></div>
@@ -874,6 +889,7 @@ n" href="icons/icon-192.svg">
         <textarea id="manualDispatchObs" class="note-input" maxlength="1200" placeholder="Observacion opcional para el despacho manual"></textarea>
       </div>
     </div>
+    <div id="manualDispatchHint" class="manual-dispatch-hint hidden" role="alert"></div>
     <div class="modal-actions" style="margin-top:12px">
       <button class="btn btn-ghost" id="btnManualDispatchCancel">Cancelar</button>
       <button class="btn btn-primary" id="btnManualDispatchConfirm">Enviar despacho</button>
@@ -881,9 +897,9 @@ n" href="icons/icon-192.svg">
   </div>
 </div>
 
-<script src="js/functions.js"></script>
-<script src="js/main.js"></script>
-<script src="js/pwa.js"></script>
+<script src="js/functions.js?v=1.0.9"></script>
+<script src="js/main.js?v=1.0.9"></script>
+<script src="js/pwa.js?v=1.0.9"></script>
 </body>
 </html>
 

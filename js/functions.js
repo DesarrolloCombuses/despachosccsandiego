@@ -2199,20 +2199,55 @@ function getManualDispatchVehicleRows(){
   return unique;
 }
 
+let manualDispatchInternoRows = [];
+
 function fillManualDispatchInternoList(){
-  if (!manualDispatchInternoList) return;
-  const rows = getManualDispatchVehicleRows();
-  manualDispatchInternoList.innerHTML = rows.map(row => {
+  manualDispatchInternoRows = getManualDispatchVehicleRows();
+  renderManualDispatchInternoPanel();
+}
+
+// Dibuja el panel desplegable del Interno, filtrando por lo que el usuario escribe.
+function renderManualDispatchInternoPanel(){
+  const panel = document.getElementById("manualDispatchInternoPanel");
+  if (!panel) return;
+  const q = String(manualDispatchInterno?.value || "").trim().toLowerCase();
+  const rows = manualDispatchInternoRows.filter(row => {
+    if (!q) return true;
+    const interno = String(row?.interno || "").toLowerCase();
+    const placa = String(row?.placa || row?.Placa || "").toLowerCase();
+    const mid = String(row?.mid || "").toLowerCase();
+    return interno.includes(q) || placa.includes(q) || mid.includes(q);
+  }).slice(0, 200);
+  if (!rows.length) {
+    panel.innerHTML = `<div class="combo-empty">Sin coincidencias</div>`;
+    return;
+  }
+  panel.innerHTML = rows.map(row => {
     const interno = String(row?.interno || "").trim();
     const base = formatBaseLabel(getBaseCanonical(row?.base || "") || getManualDispatchDefaultBase());
     const mid = String(row?.mid || "").trim();
     const placa = String(row?.placa || row?.Placa || "").trim();
-    const labelParts = [];
-    if (placa) labelParts.push(`Placa ${placa}`);
-    if (base) labelParts.push(base);
-    labelParts.push(`MID ${mid || "-"}`);
-    return `<option value="${escapeHtml(interno)}" label="${escapeHtml(labelParts.join(" | "))}"></option>`;
+    const subParts = [];
+    if (placa) subParts.push(`Placa ${placa}`);
+    if (base) subParts.push(base);
+    subParts.push(`MID ${mid || "-"}`);
+    return `<div class="combo-option" data-interno="${escapeHtml(interno)}">`
+      + `<span class="opt-main">${escapeHtml(interno)}</span>`
+      + `<span class="opt-sub">${escapeHtml(subParts.join(" | "))}</span>`
+      + `</div>`;
   }).join("");
+}
+
+function openManualDispatchInternoPanel(){
+  const panel = document.getElementById("manualDispatchInternoPanel");
+  if (!panel) return;
+  renderManualDispatchInternoPanel();
+  panel.classList.remove("hidden");
+}
+
+function closeManualDispatchInternoPanel(){
+  const panel = document.getElementById("manualDispatchInternoPanel");
+  if (panel) panel.classList.add("hidden");
 }
 
 function findManualDispatchVehicleByInterno(internoValue){
@@ -2301,6 +2336,10 @@ async function openManualDispatchModal(){
     manualDispatchItinerarySelect.innerHTML = buildItineraryOptionsHtml();
     manualDispatchItinerarySelect.value = "";
   }
+  const hint = document.getElementById("manualDispatchHint");
+  if (hint) { hint.textContent = ""; hint.classList.add("hidden"); }
+  [manualDispatchInterno, manualDispatchConductorName, manualDispatchItinerarySelect]
+    .forEach(el => el && el.classList.remove("field-missing"));
   manualDispatchModal.classList.remove("hidden");
   setTimeout(() => manualDispatchInterno?.focus(), 10);
   return new Promise(resolve => {
@@ -2415,12 +2454,89 @@ if (btnRemoveFromListConfirm) btnRemoveFromListConfirm.onclick = () => closeRemo
 if (btnEditPlanillaCancel) btnEditPlanillaCancel.onclick = () => closeEditPlanillaModal(false);
 if (btnEditPlanillaSave) btnEditPlanillaSave.onclick = () => closeEditPlanillaModal(true);
 if (btnManualDispatchCancel) btnManualDispatchCancel.onclick = () => closeManualDispatchModal(false);
-if (btnManualDispatchConfirm) btnManualDispatchConfirm.onclick = () => closeManualDispatchModal(true);
+// Solo los campos que el usuario debe seleccionar: Interno, Conductor e Itinerario.
+// (MID y Driver ID se autocompletan al elegir Interno y Conductor, no se piden aparte.)
+function getManualDispatchMissingFields(){
+  const interno = String(manualDispatchInterno?.value || "").trim();
+  const mId = String(manualDispatchMid?.value || "").trim();
+  const conductorName = String(manualDispatchConductorName?.value || "").trim();
+  const drvId = String(manualDispatchDriverId?.value || "").trim();
+  const itinerary = String(manualDispatchItinerarySelect?.value || "").trim();
+  const faltantes = [];
+  if (!interno || !mId) faltantes.push({ label: !interno ? "Interno" : "Interno valido", el: manualDispatchInterno });
+  if (!conductorName || !drvId) faltantes.push({ label: !conductorName ? "Conductor" : "Conductor valido", el: manualDispatchConductorName });
+  if (!itinerary) faltantes.push({ label: "Itinerario", el: manualDispatchItinerarySelect });
+  return faltantes;
+}
+
+// Pinta de rojo los campos faltantes y limpia los ya completados.
+function paintManualDispatchMissing(faltantes){
+  [manualDispatchInterno, manualDispatchConductorName, manualDispatchItinerarySelect]
+    .forEach(el => el && el.classList.remove("field-missing"));
+  (faltantes || []).forEach(f => f.el && f.el.classList.add("field-missing"));
+}
+// Muestra u oculta el aviso de campos faltantes dentro del modal de despacho manual.
+function setManualDispatchHint(message){
+  const hint = document.getElementById("manualDispatchHint");
+  if (!hint) return;
+  if (message) {
+    hint.textContent = message;
+    hint.classList.remove("hidden");
+  } else {
+    hint.textContent = "";
+    hint.classList.add("hidden");
+  }
+}
+if (btnManualDispatchConfirm) btnManualDispatchConfirm.onclick = () => {
+  const faltantes = getManualDispatchMissingFields();
+  if (faltantes.length) {
+    // Aviso visible dentro del formulario (no detras del modal) para guiar al usuario.
+    setManualDispatchHint(`Para enviar el despacho debes seleccionar: ${faltantes.map(f => f.label).join(", ")}.`);
+    paintManualDispatchMissing(faltantes);
+    return; // mantiene el formulario abierto para que el usuario complete los datos
+  }
+  setManualDispatchHint("");
+  paintManualDispatchMissing([]);
+  closeManualDispatchModal(true);
+};
 if (btnManualDispatch) btnManualDispatch.onclick = () => handleManualDispatch();
-if (manualDispatchInterno) manualDispatchInterno.addEventListener("change", () => { applyManualDispatchVehicleSelection(); });
-if (manualDispatchInterno) manualDispatchInterno.addEventListener("input", () => { applyManualDispatchVehicleSelection(); });
-if (manualDispatchConductorName) manualDispatchConductorName.addEventListener("change", applyManualDispatchConductorSelection);
-if (manualDispatchConductorName) manualDispatchConductorName.addEventListener("input", applyManualDispatchConductorSelection);
+// Si el aviso de faltantes esta visible, lo recalcula al completar campos.
+function refreshManualDispatchHintIfVisible(){
+  const hint = document.getElementById("manualDispatchHint");
+  if (!hint || hint.classList.contains("hidden")) return;
+  const faltantes = getManualDispatchMissingFields();
+  setManualDispatchHint(faltantes.length ? `Para enviar el despacho debes seleccionar: ${faltantes.map(f => f.label).join(", ")}.` : "");
+  paintManualDispatchMissing(faltantes);
+}
+if (manualDispatchInterno) manualDispatchInterno.addEventListener("change", () => { applyManualDispatchVehicleSelection(); refreshManualDispatchHintIfVisible(); });
+if (manualDispatchInterno) manualDispatchInterno.addEventListener("input", () => { applyManualDispatchVehicleSelection(); refreshManualDispatchHintIfVisible(); openManualDispatchInternoPanel(); });
+if (manualDispatchInterno) manualDispatchInterno.addEventListener("focus", openManualDispatchInternoPanel);
+{
+  const internoArrow = document.getElementById("manualDispatchInternoArrow");
+  const internoPanel = document.getElementById("manualDispatchInternoPanel");
+  const internoCombo = document.getElementById("manualDispatchInternoCombo");
+  if (internoArrow) internoArrow.addEventListener("click", (ev) => {
+    ev.preventDefault();
+    const panel = document.getElementById("manualDispatchInternoPanel");
+    if (panel && panel.classList.contains("hidden")) { openManualDispatchInternoPanel(); manualDispatchInterno?.focus(); }
+    else { closeManualDispatchInternoPanel(); }
+  });
+  if (internoPanel) internoPanel.addEventListener("click", (ev) => {
+    const opt = ev.target.closest(".combo-option");
+    if (!opt) return;
+    if (manualDispatchInterno) manualDispatchInterno.value = opt.getAttribute("data-interno") || "";
+    closeManualDispatchInternoPanel();
+    applyManualDispatchVehicleSelection();
+    refreshManualDispatchHintIfVisible();
+  });
+  // Cerrar el panel al hacer click fuera del combo.
+  document.addEventListener("click", (ev) => {
+    if (internoCombo && !internoCombo.contains(ev.target)) closeManualDispatchInternoPanel();
+  });
+}
+if (manualDispatchConductorName) manualDispatchConductorName.addEventListener("change", () => { applyManualDispatchConductorSelection(); refreshManualDispatchHintIfVisible(); });
+if (manualDispatchConductorName) manualDispatchConductorName.addEventListener("input", () => { applyManualDispatchConductorSelection(); refreshManualDispatchHintIfVisible(); });
+if (manualDispatchItinerarySelect) manualDispatchItinerarySelect.addEventListener("change", refreshManualDispatchHintIfVisible);
 if (dispatchModal) {
   dispatchModal.addEventListener("click", (ev) => {
     if (ev.target === dispatchModal) closeDispatchModal(false);
@@ -4398,12 +4514,17 @@ async function handleManualDispatch(){
     base: String(modalResult?.base || getManualDispatchDefaultBase() || "").trim(),
     conductorName: String(modalResult?.conductorName || "").trim()
   };
-  if (!payload.interno || !payload.mId || !payload.drvId || !payload.itinerary) {
-    showToast("Despacho manual: faltan Interno, MID, Driver ID o Itinerario.", "warn");
+  const faltantes = [];
+  if (!payload.interno || !payload.mId) faltantes.push(!payload.interno ? "Interno" : "Interno valido");
+  if (!payload.conductorName || !payload.drvId) faltantes.push(!payload.conductorName ? "Conductor" : "Conductor valido");
+  if (!payload.itinerary) faltantes.push("Itinerario");
+  if (faltantes.length) {
+    showToast(`Para enviar el despacho debes seleccionar: ${faltantes.join(", ")}.`, "warn");
     return;
   }
   payload.itineraryLabel = String(getSonarItineraryById(payload.itinerary)?.nombre || payload.itinerary);
   let shouldReloadFromDb = false;
+  let dispatchSucceeded = false;
   try {
     const result = await sendDispatchToSonar(payload);
     const row = findPlanillaRowForManualDispatch(payload);
@@ -4429,19 +4550,31 @@ async function handleManualDispatch(){
     }
     const regIdTxt = dispatchRegId;
     showToast(`Despacho manual enviado${regIdTxt ? ` (regId ${regIdTxt})` : ""}.`, "ok");
+    dispatchSucceeded = true;
     notifyDispatchServerSyncDelay();
   } catch (error) {
     showToast(`Error en despacho manual: ${error?.message || "fallo en sonar-dispatch"}`, "err");
   } finally {
     if (shouldReloadFromDb) {
       await loadPlanillaAfiliadosFromSupabase();
-      return;
+    } else {
+      renderLlegadasAeropuerto();
+      renderLlegadasTerminalNorte();
+      renderLlegadasSanDiego();
+      renderLlegadasNutibara();
+      renderNoDespachoTab();
     }
-    renderLlegadasAeropuerto();
-    renderLlegadasTerminalNorte();
-    renderLlegadasSanDiego();
-    renderLlegadasNutibara();
-    renderNoDespachoTab();
+    if (dispatchSucceeded) {
+      goToHistorialDespachosAfterDispatch();
+    }
+  }
+}
+
+// Navega a la pestana Historial despachos y la refresca tras un despacho manual exitoso.
+function goToHistorialDespachosAfterDispatch(){
+  openTabById('historial-despachos');
+  if (typeof loadDespachosRealizadosFromSupabase === "function") {
+    loadDespachosRealizadosFromSupabase();
   }
 }
 
@@ -5981,6 +6114,7 @@ document.querySelectorAll('.tab').forEach(tab => {
     if (tabId === 'llegadas-nutibara') ensureFreshPlanillaData({ force: true });
     if (tabId === 'no-despacho') ensureFreshPlanillaData({ force: true });
     if (tabId === 'fuera-lista') renderFueraListaTab();
+    if (tabId === 'despacho-manual') handleManualDispatch();
     if (tabId === 'vehiculos-sonar') loadVehiculosSonarFromSupabase({ force: true });
     if (tabId === 'despachos-sonar' && !despachosSonarLastLoadedAt) loadDespachosSonarFromEdge();
     if (tabId === 'mapa-vehiculos') activateMapaVehiculosTab();
@@ -6154,6 +6288,10 @@ function bindUIEvents(){
   // Fuera de lista
   if (fueraListaSearch) fueraListaSearch.addEventListener("input", renderFueraListaTab);
 
+  // Realizar despacho (pestana)
+  const btnOpenManualDispatchForm = document.getElementById("btnOpenManualDispatchForm");
+  if (btnOpenManualDispatchForm) btnOpenManualDispatchForm.addEventListener("click", () => handleManualDispatch());
+
   // Mobile tabs
   if (mobileTabSelect) {
     mobileTabSelect.addEventListener("change", () => {
@@ -6175,6 +6313,9 @@ async function initializeApp(){
   refreshMobileTabSwitcher();
   if (getActiveTabId() === "mapa-vehiculos" && typeof activateMapaVehiculosTab === "function") {
     activateMapaVehiculosTab();
+  }
+  if (getActiveTabId() === "despachos-sonar" && !despachosSonarLastLoadedAt) {
+    loadDespachosSonarFromEdge();
   }
 }
 
