@@ -2,6 +2,10 @@
 
 Historial de versiones de la PWA. Las entradas nuevas las agrega `python tools/version.py`.
 
+## 1.2.0 - 2026-10-13
+
+- Fase 2 de aligeramiento: se quita el codigo, HTML y CSS de las pestanas y formularios que ya no se usaban (functions.js 263 -> 105 KB, index.html 47 -> 11 KB, styles.css 34 -> 26 KB). Sin cambios de funcionamiento; el titulo pasa a 'Despachos CC San Diego' y se quita el boton 'Panel de llegadas vehiculos', que no hacia nada.
+
 ## 1.1.0 - 2026-10-13
 
 - App mas liviana: sin ExcelJS, XLSX, Leaflet ni fuente Inter (~82% menos descarga); supabase-js fijado en 2.117.3 con SRI y cache; version visible en la app y manejo de versiones con tools/version.py.

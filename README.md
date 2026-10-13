@@ -8,7 +8,7 @@ Panel movil PWA enfocado exclusivamente en la operacion de despachos del punto C
 - **Historial despachos** (con cancelacion y edicion de pasajeros/observaciones)
 - **Boton Despacho manual** (modal global, accesible desde cualquier pestana)
 
-Las demas pestanas del panel completo (Llegadas Almacentro, Despachos Sonar, Mapa vehiculos, Tabla llegadas, Asistencia biometrica, Preoperacionales SICOV, etc.) estan ocultas en esta version recortada.
+Las demas pestanas del panel completo (Llegadas Almacentro, Despachos Sonar, Mapa vehiculos, Tabla llegadas, Asistencia biometrica, Preoperacionales SICOV, etc.) no estan en esta version: su codigo se quito para que la app sea liviana. Siguen en el panel completo `enturnamientosa` y en el historial de git de este repo.
 
 ## PWA optimizada para movil
 
@@ -34,7 +34,11 @@ Abrir luego `http://127.0.0.1:8001/`.
 
 ## Origen
 
-Esta version es una copia recortada del panel completo `enturnamientosa`. Comparte el mismo backend (Supabase Edge Functions: sonar-dispatch, sonar-cancel, sonar-despachos) y la misma tabla `llegadas_104` con Realtime. La unica diferencia es la interfaz: aqui solo se exponen las pestanas necesarias para el operativo de CC San Diego.
+Esta version es una copia recortada del panel completo `enturnamientosa` y comparte su backend:
+
+- Supabase Edge Functions `sonar-dispatch` y `sonar-cancel` (enviar y cancelar despachos en Sonar).
+- Tablas `despachos_realizados` (historial), `planilla_afiliados_2` (al despachar o cancelar se actualiza la llegada del vehiculo), `vehiculossonar` (internos y MID) y `llegadas_104` (vehiculos en fila, con Realtime, para los indicadores del historial).
+- Conductores desde una hoja de Google Sheets publicada como CSV.
 
 ## Versiones y publicacion
 
