@@ -2,6 +2,10 @@
 
 Historial de versiones de la PWA. Las entradas nuevas las agrega `python tools/version.py`.
 
+## 1.3.0 - 2026-10-13
+
+- Formulario de despacho mejorado: propone el conductor asignado en Sonar al elegir el interno, avisa si el interno ya tiene un despacho activo en la ultima hora, queda abierto con 'Enviando...' y sin doble envio, si falla conserva los datos para reintentar, Enter no envia desde Observaciones, itinerario unico preseleccionado, resumen compacto (placa, MID, base, driver ID), se puede desplazar en celular y recarga la planilla antes de despachar.
+
 ## 1.2.0 - 2026-10-13
 
 - Fase 2 de aligeramiento: se quita el codigo, HTML y CSS de las pestanas y formularios que ya no se usaban (functions.js 263 -> 105 KB, index.html 47 -> 11 KB, styles.css 34 -> 26 KB). Sin cambios de funcionamiento; el titulo pasa a 'Despachos CC San Diego' y se quita el boton 'Panel de llegadas vehiculos', que no hacia nada.

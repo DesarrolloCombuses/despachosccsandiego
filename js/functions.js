@@ -71,6 +71,9 @@ const manualDispatchConductorName = document.getElementById("manualDispatchCondu
 const manualDispatchDriverId = document.getElementById("manualDispatchDriverId");
 const manualDispatchItinerarySelect = document.getElementById("manualDispatchItinerarySelect");
 const manualDispatchObs = document.getElementById("manualDispatchObs");
+const manualDispatchVehicleInfo = document.getElementById("manualDispatchVehicleInfo");
+const manualDispatchRepeatWarning = document.getElementById("manualDispatchRepeatWarning");
+const manualDispatchDriverInfo = document.getElementById("manualDispatchDriverInfo");
 const btnManualDispatchCancel = document.getElementById("btnManualDispatchCancel");
 const btnManualDispatchConfirm = document.getElementById("btnManualDispatchConfirm");
 
@@ -86,6 +89,12 @@ let vehiculosSonarLoading = false;
 let vehiculosSonarLoadedOnce = false;
 let vehiculosSonarLastLoadedAt = 0;
 let manualDispatchVehicleLookupSeq = 0;
+let manualDispatchSending = false;
+let manualDispatchCurrentVehicle = null;  // fila de vehiculossonar del interno elegido
+let manualDispatchSuggestedValue = "";    // conductor puesto automaticamente (no pisa una eleccion manual)
+let manualDispatchRepeatSeq = 0;
+const REPEAT_DISPATCH_WINDOW_MIN = 60;
+const PLANILLA_FRESH_MAX_AGE_MS = 60 * 1000;
 const VEHICULOS_SONAR_REFRESH_MAX_AGE_MS = 5 * 60 * 1000;
 const DISPATCH_SERVER_SYNC_WAIT_MS = 65000;
 let dispatchServerSyncTimer = null;
@@ -181,22 +190,58 @@ function buildItineraryOptionsHtml(itinerariesInput){
   }`;
 }
 
-function closeManualDispatchModal(confirmed){
+function readManualDispatchForm(){
+  return {
+    interno: String(manualDispatchInterno?.value || "").trim(),
+    base: String(manualDispatchBase?.value || "").trim(),
+    mId: String(manualDispatchMid?.value || "").trim(),
+    conductorName: String(manualDispatchConductorName?.value || "").trim(),
+    drvId: String(manualDispatchDriverId?.value || "").trim(),
+    itinerary: String(manualDispatchItinerarySelect?.value || "").trim(),
+    observaciones: String(manualDispatchObs?.value || "").trim()
+  };
+}
+
+function hideManualDispatchModal(){
   if (manualDispatchModal) manualDispatchModal.classList.add("hidden");
+  closeManualDispatchInternoPanel();
+  closeManualDispatchConductorPanel();
+}
+
+// Confirmar entrega los datos y deja el formulario abierto: se cierra cuando Sonar acepta el despacho,
+// y si falla el envio los datos siguen ahi para reintentar. Cancelar lo cierra (no mientras se envia).
+function closeManualDispatchModal(confirmed){
+  if (!confirmed) {
+    if (manualDispatchSending) return;
+    hideManualDispatchModal();
+  }
   if (manualDispatchModalResolver) {
     const resolve = manualDispatchModalResolver;
     manualDispatchModalResolver = null;
-    resolve({
-      confirmed: !!confirmed,
-      interno: String(manualDispatchInterno?.value || "").trim(),
-      base: String(manualDispatchBase?.value || "").trim(),
-      mId: String(manualDispatchMid?.value || "").trim(),
-      conductorName: String(manualDispatchConductorName?.value || "").trim(),
-      drvId: String(manualDispatchDriverId?.value || "").trim(),
-      itinerary: String(manualDispatchItinerarySelect?.value || "").trim(),
-      observaciones: String(manualDispatchObs?.value || "").trim()
-    });
+    resolve({ confirmed: !!confirmed, ...readManualDispatchForm() });
   }
+}
+
+function waitManualDispatchSubmit(){
+  return new Promise(resolve => {
+    manualDispatchModalResolver = resolve;
+  });
+}
+
+function setManualDispatchSending(sending){
+  manualDispatchSending = sending;
+  manualDispatchModal?.querySelector(".modal-card")?.classList.toggle("is-sending", sending);
+  if (btnManualDispatchConfirm) {
+    btnManualDispatchConfirm.disabled = sending;
+    btnManualDispatchConfirm.textContent = sending ? "Enviando..." : "Enviar despacho";
+  }
+  if (btnManualDispatchCancel) btnManualDispatchCancel.disabled = sending;
+}
+
+// La planilla se usa al despachar para marcar la llegada del vehiculo; la app puede llevar horas abierta.
+async function ensureFreshPlanilla(){
+  if (planillaLastLoadedAt && (Date.now() - planillaLastLoadedAt) <= PLANILLA_FRESH_MAX_AGE_MS) return;
+  await loadPlanillaAfiliadosFromSupabase();
 }
 
 function normalizeVehiculoSonarRow(row){
@@ -1265,13 +1310,109 @@ function applyManualDispatchConductorSelection(){
     : "";
   const drvId = fromPipe || findDriverIdByName(conductor, base);
   manualDispatchDriverId.value = drvId || "";
+  renderManualDispatchDriverInfo();
+}
+
+// Propone el conductor que Sonar tiene asignado al vehiculo (vehiculossonar.mdriverid) si esta habilitado
+// en la hoja. No reemplaza un conductor que el operador eligio a mano.
+function suggestManualDispatchConductor(){
+  if (!manualDispatchConductorName) return;
+  const current = String(manualDispatchConductorName.value || "").trim();
+  if (current && current !== manualDispatchSuggestedValue) return;
+  const assignedId = String(manualDispatchCurrentVehicle?.mdriverid ?? "").trim();
+  const driver = assignedId
+    ? (driversCatalogRows || []).find(d => String(d?.dr_id || "").trim() === assignedId
+      && String(d?.status || "").trim().toUpperCase() === "ENABLED")
+    : null;
+  manualDispatchSuggestedValue = driver ? `${String(driver.nombre || "").trim()} | ${assignedId}` : "";
+  manualDispatchConductorName.value = manualDispatchSuggestedValue;
+}
+
+// Si el conductor elegido no es el que Sonar tiene asignado al vehiculo, lo informa.
+function getManualDispatchSonarDriverNote(){
+  const assignedId = String(manualDispatchCurrentVehicle?.mdriverid ?? "").trim();
+  if (!assignedId || !driversCatalogRows.length) return "";
+  if (String(manualDispatchDriverId?.value || "").trim() === assignedId) return "";
+  const driver = driversCatalogRows.find(d => String(d?.dr_id || "").trim() === assignedId);
+  if (!driver) return `En Sonar el vehiculo tiene asignado el ID ${assignedId}, que no esta en la hoja de conductores.`;
+  const nombre = String(driver.nombre || "").trim();
+  if (String(driver.status || "").trim().toUpperCase() !== "ENABLED") {
+    return `En Sonar esta asignado ${nombre}, inhabilitado en la hoja de conductores.`;
+  }
+  return `En Sonar esta asignado ${nombre}.`;
+}
+
+function renderManualDispatchDriverInfo(){
+  if (!manualDispatchDriverInfo) return;
+  const drvId = String(manualDispatchDriverId?.value || "").trim();
+  const value = String(manualDispatchConductorName?.value || "").trim();
+  const parts = [];
+  if (drvId) parts.push(`<span>Driver ID <strong>${escapeHtml(drvId)}</strong></span>`);
+  if (drvId && value && value === manualDispatchSuggestedValue) parts.push(`<span class="dispatch-badge">Asignado en Sonar</span>`);
+  const note = getManualDispatchSonarDriverNote();
+  if (note) parts.push(`<span class="dispatch-note">${escapeHtml(note)}</span>`);
+  manualDispatchDriverInfo.innerHTML = parts.join("");
+  manualDispatchDriverInfo.hidden = !parts.length;
+}
+
+function renderManualDispatchVehicleInfo(row){
+  if (!manualDispatchVehicleInfo) return;
+  const mid = String(row?.mid || "").trim();
+  if (!row || !mid) {
+    manualDispatchVehicleInfo.innerHTML = "";
+    manualDispatchVehicleInfo.hidden = true;
+    return;
+  }
+  const parts = [];
+  const placa = String(row?.placa || row?.Placa || "").trim();
+  if (placa) parts.push(`Placa <strong>${escapeHtml(placa)}</strong>`);
+  parts.push(`MID <strong>${escapeHtml(mid)}</strong>`);
+  const baseNum = getBaseNumForInterno(row?.interno);
+  if (baseNum) parts.push(`Base <strong>${escapeHtml(baseNum)}</strong>`);
+  manualDispatchVehicleInfo.innerHTML = parts.map(p => `<span>${p}</span>`).join("");
+  manualDispatchVehicleInfo.hidden = false;
+}
+
+// Avisa (sin bloquear) si el interno ya tiene un despacho ACTIVO en los ultimos REPEAT_DISPATCH_WINDOW_MIN minutos.
+async function checkManualDispatchRepeat(interno){
+  const seq = ++manualDispatchRepeatSeq;
+  if (!manualDispatchRepeatWarning) return;
+  manualDispatchRepeatWarning.textContent = "";
+  manualDispatchRepeatWarning.hidden = true;
+  if (!interno) return;
+  try {
+    const desde = new Date(Date.now() - REPEAT_DISPATCH_WINDOW_MIN * 60000).toISOString();
+    const { data, error } = await planillaSupabaseClient
+      .from(DESPACHOS_REALIZADOS_TABLE)
+      .select("created_at, itinerario")
+      .eq("interno", interno)
+      .eq("estado", "ACTIVO")
+      .gte("created_at", desde)
+      .order("created_at", { ascending: false })
+      .limit(1);
+    if (error) throw error;
+    if (seq !== manualDispatchRepeatSeq || !data?.length) return;
+    const last = data[0];
+    const mins = Math.max(0, Math.floor(getMinutesSince(last.created_at) || 0));
+    manualDispatchRepeatWarning.textContent = `Atencion: el interno ${interno} ya tiene un despacho activo de hace ${mins} min`
+      + ` (${last.itinerario || "sin itinerario"}, ${formatHistorialDateTime(last.created_at)}). Revisa antes de enviar otro.`;
+    manualDispatchRepeatWarning.hidden = false;
+  } catch (err) {
+    console.warn("[despacho repetido] no se pudo consultar:", err);
+  }
 }
 
 function applyManualDispatchVehicleRow(row){
+  const interno = String(row?.interno || "").trim();
+  const changed = String(manualDispatchCurrentVehicle?.interno || "").trim() !== interno;
+  manualDispatchCurrentVehicle = row || null;
+  renderManualDispatchVehicleInfo(row);
+  if (changed) checkManualDispatchRepeat(row ? interno : "");
   if (!row) {
     if (manualDispatchBase) manualDispatchBase.value = "";
     if (manualDispatchMid) manualDispatchMid.value = "";
     fillManualDispatchConductorList("");
+    suggestManualDispatchConductor();
     applyManualDispatchConductorSelection();
     return;
   }
@@ -1280,6 +1421,7 @@ function applyManualDispatchVehicleRow(row){
   if (manualDispatchBase) manualDispatchBase.value = base;
   if (manualDispatchMid) manualDispatchMid.value = mid;
   fillManualDispatchConductorList(base);
+  suggestManualDispatchConductor();
   const conductorEnFila = String(row?.conductor || "").trim();
   if (conductorEnFila && manualDispatchConductorName && !String(manualDispatchConductorName.value || "").trim()) {
     const baseCanonical = getBaseCanonical(base || "");
@@ -1310,9 +1452,12 @@ async function openManualDispatchModal(){
   }
   // Sin await: si el CSV tarda, el panel del Conductor muestra "Cargando..." y se redibuja al llegar.
   ensureDriversCatalogFresh();
+  ensureFreshPlanilla();
   await loadVehiculosSonarFromSupabase();
   fillManualDispatchInternoList();
   closeManualDispatchConductorPanel();
+  manualDispatchCurrentVehicle = null;
+  manualDispatchSuggestedValue = "";
   fillManualDispatchConductorList("");
   if (manualDispatchInterno) manualDispatchInterno.value = "";
   if (manualDispatchBase) manualDispatchBase.value = "";
@@ -1322,17 +1467,18 @@ async function openManualDispatchModal(){
   if (manualDispatchObs) manualDispatchObs.value = "";
   if (manualDispatchItinerarySelect) {
     manualDispatchItinerarySelect.innerHTML = buildItineraryOptionsHtml();
-    manualDispatchItinerarySelect.value = "";
+    // Con un solo itinerario configurado, ya viene elegido.
+    manualDispatchItinerarySelect.value = SONAR_ITINERARIES.length === 1 ? String(SONAR_ITINERARIES[0].id) : "";
   }
-  const hint = document.getElementById("manualDispatchHint");
-  if (hint) { hint.textContent = ""; hint.classList.add("hidden"); }
-  [manualDispatchInterno, manualDispatchConductorName, manualDispatchItinerarySelect]
-    .forEach(el => el && el.classList.remove("field-missing"));
+  renderManualDispatchVehicleInfo(null);
+  checkManualDispatchRepeat("");
+  renderManualDispatchDriverInfo();
+  setManualDispatchHint("");
+  paintManualDispatchMissing([]);
+  setManualDispatchSending(false);
   manualDispatchModal.classList.remove("hidden");
   setTimeout(() => manualDispatchInterno?.focus(), 10);
-  return new Promise(resolve => {
-    manualDispatchModalResolver = resolve;
-  });
+  return waitManualDispatchSubmit();
 }
 
 function applyAuthState(session){
@@ -1455,9 +1601,10 @@ function paintManualDispatchMissing(faltantes){
   (faltantes || []).forEach(f => f.el && f.el.classList.add("field-missing"));
 }
 // Muestra u oculta el aviso de campos faltantes dentro del modal de despacho manual.
-function setManualDispatchHint(message){
+function setManualDispatchHint(message, kind = "warn"){
   const hint = document.getElementById("manualDispatchHint");
   if (!hint) return;
+  hint.classList.toggle("is-error", !!message && kind === "error");
   if (message) {
     hint.textContent = message;
     hint.classList.remove("hidden");
@@ -1467,6 +1614,7 @@ function setManualDispatchHint(message){
   }
 }
 if (btnManualDispatchConfirm) btnManualDispatchConfirm.onclick = () => {
+  if (manualDispatchSending) return;
   const faltantes = getManualDispatchMissingFields();
   if (faltantes.length) {
     // Aviso visible dentro del formulario (no detras del modal) para guiar al usuario.
@@ -1562,7 +1710,11 @@ document.addEventListener("keydown", (ev) => {
     return;
   }
   if (ev.key === "Enter" && manualDispatchModal && !manualDispatchModal.classList.contains("hidden")) {
-    closeManualDispatchModal(true);
+    // Enter envia igual que el boton (con validacion). En Observaciones es salto de linea.
+    const tag = String(ev.target?.tagName || "").toUpperCase();
+    if (tag === "TEXTAREA" || tag === "BUTTON" || manualDispatchSending) return;
+    ev.preventDefault();
+    btnManualDispatchConfirm?.click();
   }
 });
 
@@ -2105,30 +2257,52 @@ function findPlanillaRowForManualDispatch(payload){
 }
 
 async function handleManualDispatch(){
-  const modalResult = await openManualDispatchModal();
-  if (!modalResult?.confirmed) return;
-  const payload = {
-    mId: String(modalResult?.mId || "").trim(),
-    drvId: String(modalResult?.drvId || "").trim(),
-    itinerary: String(modalResult?.itinerary || "").trim(),
-    observaciones: String(modalResult?.observaciones || "").trim(),
-    interno: String(modalResult?.interno || "").trim(),
-    base: String(modalResult?.base || getManualDispatchDefaultBase() || "").trim(),
-    conductorName: String(modalResult?.conductorName || "").trim()
-  };
-  const faltantes = [];
-  if (!payload.interno || !payload.mId) faltantes.push(!payload.interno ? "Interno" : "Interno valido");
-  if (!payload.conductorName || !payload.drvId) faltantes.push(!payload.conductorName ? "Conductor" : "Conductor valido");
-  if (!payload.itinerary) faltantes.push("Itinerario");
-  if (faltantes.length) {
-    showToast(`Para enviar el despacho debes seleccionar: ${faltantes.join(", ")}.`, "warn");
+  // Si el formulario ya esta abierto (o enviando), no se reinicia.
+  if (manualDispatchSending || (manualDispatchModal && !manualDispatchModal.classList.contains("hidden"))) return;
+  let form = await openManualDispatchModal();
+  while (form?.confirmed) {
+    const payload = {
+      mId: form.mId,
+      drvId: form.drvId,
+      itinerary: form.itinerary,
+      observaciones: form.observaciones,
+      interno: form.interno,
+      base: form.base || String(getManualDispatchDefaultBase() || "").trim(),
+      conductorName: form.conductorName
+    };
+    const faltantes = getManualDispatchMissingFields();
+    if (faltantes.length) {
+      setManualDispatchHint(`Para enviar el despacho debes seleccionar: ${faltantes.map(f => f.label).join(", ")}.`);
+      paintManualDispatchMissing(faltantes);
+      form = await waitManualDispatchSubmit();
+      continue;
+    }
+    payload.itineraryLabel = String(getSonarItineraryById(payload.itinerary)?.nombre || payload.itinerary);
+    setManualDispatchHint("");
+    setManualDispatchSending(true);
+    // La planilla debe estar al dia para encontrar la llegada del vehiculo que se despacha.
+    await ensureFreshPlanilla();
+    let result;
+    try {
+      result = await sendDispatchToSonar(payload);
+    } catch (error) {
+      setManualDispatchSending(false);
+      setManualDispatchHint(`No se pudo enviar el despacho: ${error?.message || "fallo en sonar-dispatch"}. Revisa los datos e intenta de nuevo.`, "error");
+      form = await waitManualDispatchSubmit();
+      continue;
+    }
+    // Sonar ya acepto el despacho: desde aqui no se vuelve a enviar (evita despachos duplicados).
+    setManualDispatchSending(false);
+    hideManualDispatchModal();
+    await completeManualDispatch(payload, result);
     return;
   }
-  payload.itineraryLabel = String(getSonarItineraryById(payload.itinerary)?.nombre || payload.itinerary);
+}
+
+// Pasos despues de que Sonar acepto el despacho: historial, planilla y paso al Historial.
+async function completeManualDispatch(payload, result){
   let shouldReloadFromDb = false;
-  let dispatchSucceeded = false;
   try {
-    const result = await sendDispatchToSonar(payload);
     const row = findPlanillaRowForManualDispatch(payload);
     const dispatchRegId = extractDispatchRegId(result);
     if (dispatchRegId) payload.dispatchRegId = dispatchRegId;
@@ -2150,20 +2324,16 @@ async function handleManualDispatch(){
         showToast("Despacho manual enviado, pero no se guardo en planilla.", "warn");
       }
     }
-    const regIdTxt = dispatchRegId;
-    showToast(`Despacho manual enviado${regIdTxt ? ` (regId ${regIdTxt})` : ""}.`, "ok");
-    dispatchSucceeded = true;
+    showToast(`Despacho manual enviado${dispatchRegId ? ` (regId ${dispatchRegId})` : ""}.`, "ok");
     notifyDispatchServerSyncDelay();
   } catch (error) {
-    showToast(`Error en despacho manual: ${error?.message || "fallo en sonar-dispatch"}`, "err");
-  } finally {
-    if (shouldReloadFromDb) {
-      await loadPlanillaAfiliadosFromSupabase();
-    }
-    if (dispatchSucceeded) {
-      goToHistorialDespachosAfterDispatch();
-    }
+    console.error("Despacho enviado a Sonar; fallo un paso posterior:", error);
+    showToast(`Despacho enviado, pero fallo un paso posterior: ${error?.message || "error"}`, "warn");
   }
+  if (shouldReloadFromDb) {
+    await loadPlanillaAfiliadosFromSupabase();
+  }
+  goToHistorialDespachosAfterDispatch();
 }
 
 // Navega a la pestana Historial despachos y la refresca tras un despacho manual exitoso.
@@ -2443,6 +2613,10 @@ async function loadDriversFromCSVOnce() {
   } finally {
     isLoadingDrivers = false;
     renderManualDispatchConductorPanel();
+    if (manualDispatchModal && !manualDispatchModal.classList.contains("hidden")) {
+      suggestManualDispatchConductor();
+      applyManualDispatchConductorSelection();
+    }
   }
 }
 

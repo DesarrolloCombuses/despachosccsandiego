@@ -8,7 +8,7 @@
 //   - Auto-update: skipWaiting + clients.claim para que la nueva version reemplace a la anterior al instante.
 // La version se cambia con "python tools/version.py", no a mano.
 
-const VERSION = "ccsd-mobile-v1.2.0";
+const VERSION = "ccsd-mobile-v1.3.0";
 const CACHE_NAME = `planilla-${VERSION}`;
 const CDN_CACHE_NAME = "ccsd-cdn";
 const NETWORK_TIMEOUT_MS = 4000;
@@ -17,10 +17,10 @@ const PRECACHE_URLS = [
   "./",
   "./index.html",
   "./manifest.webmanifest",
-  "./js/functions.js?v=1.2.0",
-  "./js/main.js?v=1.2.0",
-  "./js/pwa.js?v=1.2.0",
-  "./css/styles.css?v=1.2.0",
+  "./js/functions.js?v=1.3.0",
+  "./js/main.js?v=1.3.0",
+  "./js/pwa.js?v=1.3.0",
+  "./css/styles.css?v=1.3.0",
   "./icons/icon-192.svg",
   "./icons/icon-512.svg",
   "./icons/icon-maskable.svg",

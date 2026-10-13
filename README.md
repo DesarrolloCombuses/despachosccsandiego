@@ -4,7 +4,7 @@ Panel movil PWA enfocado exclusivamente en la operacion de despachos del punto C
 
 ## Funcionalidades incluidas
 
-- **Realizar despacho** (pestana activa por defecto): formulario guiado de despacho manual
+- **Realizar despacho** (pestana activa por defecto): formulario guiado de despacho manual. Al elegir el interno propone el conductor que Sonar tiene asignado al vehiculo, avisa si ya tiene un despacho activo en la ultima hora y, si el envio falla, conserva los datos para reintentar.
 - **Historial despachos** (con cancelacion y edicion de pasajeros/observaciones)
 - **Boton Despacho manual** (modal global, accesible desde cualquier pestana)
 

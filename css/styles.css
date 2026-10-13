@@ -536,6 +536,25 @@ input:disabled,select:disabled{background:var(--bg-muted);color:var(--fg-soft);c
   line-height:1.35;
 }
 .manual-dispatch-hint.hidden{display:none}
+/* Formulario de despacho manual */
+#manualDispatchModal{overflow-y:auto;align-items:flex-start}  /* si no cabe (celular con teclado) se desplaza */
+#manualDispatchModal .modal-card{margin:auto}
+.dispatch-form{display:grid;gap:14px}
+.dispatch-field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.dispatch-field select,.dispatch-field textarea{width:100%}
+.dispatch-label{font-weight:700;font-size:14px;color:var(--fg)}
+.dispatch-optional{font-weight:400;color:var(--fg-soft)}
+.dispatch-meta{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;font-size:13px;color:var(--fg-muted)}
+.dispatch-meta[hidden],.dispatch-alert[hidden]{display:none}
+.dispatch-meta strong{color:var(--fg)}
+.dispatch-badge{padding:2px 8px;border-radius:var(--r-pill);font-size:12px;font-weight:600;background:var(--brand-soft);color:var(--brand-strong)}
+.dispatch-note{color:var(--warn)}
+.dispatch-alert{padding:10px 12px;border-radius:var(--r-md);font-size:14px;font-weight:600;line-height:1.35}
+.dispatch-alert.warn{background:var(--warn-soft);color:#92400e;border:1px solid var(--warn)}
+.dispatch-form .note-input{min-height:72px}
+.modal-card.is-sending .dispatch-form{opacity:.6;pointer-events:none}
+.manual-dispatch-hint.is-error{background:var(--err-soft);color:var(--err);border-color:var(--err)}
+.btn:disabled{opacity:.6;cursor:not-allowed;transform:none}
 .field-missing{
   border-color:var(--err) !important;
   background:var(--err-soft) !important;
@@ -824,12 +843,6 @@ input:disabled,select:disabled{background:var(--bg-muted);color:var(--fg-soft);c
   .modal-title{font-size:18px}
   .modal-actions{flex-wrap:wrap}
   .modal-actions .btn{flex:1 1 150px;justify-content:center}
-  /* Formulario de despacho manual: una sola columna en celular */
-  .dispatch-form-grid{grid-template-columns:1fr !important}
-  .dispatch-form-grid > div{grid-column:1 / -1 !important}
-  .dispatch-form-grid input,
-  .dispatch-form-grid select,
-  .dispatch-form-grid textarea{width:100%}
   .combo-panel{max-height:50vh}
   .combo-option{padding:11px 12px}
 
