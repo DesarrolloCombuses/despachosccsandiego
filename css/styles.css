@@ -1,6 +1,6 @@
 /* ============================================================
    Combuses · Planilla de Enturnamiento
-   Estilo: Corporate moderno (Inter, paleta azul corporativo)
+   Estilo: Corporate moderno (fuente del sistema, paleta azul corporativo)
    ============================================================ */
 
 :root{
@@ -45,9 +45,9 @@
   --r-lg:14px;
   --r-pill:999px;
 
-  /* tipografía */
-  --font-sans: 'Inter', 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
-  --font-num: 'Inter', 'SF Mono', 'JetBrains Mono', ui-monospace, monospace;
+  /* tipografía: fuente del sistema (no se descarga nada) */
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-num: var(--font-sans);
 }
 
 *{box-sizing:border-box}
@@ -614,6 +614,8 @@ input:disabled,select:disabled{background:var(--bg-muted);color:var(--fg-soft);c
   font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--fg-muted);
 }
 .combo-retry{display:block;margin:8px auto 0}
+.app-version{font-size:12px;color:var(--fg-soft);font-variant-numeric:tabular-nums;white-space:nowrap}
+.auth-card .app-version{margin-top:10px;text-align:center}
 .note-input{
   width:100%;
   min-height:130px;

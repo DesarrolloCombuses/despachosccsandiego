@@ -3,33 +3,22 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>Panel de llegadas vehiculos</title>
+<!-- Version de la app: se cambia con "python tools/version.py", no a mano. -->
+<meta name="app-version" content="1.1.0" />
+<title>Despachos CC San Diego</title>
 
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#0078d4">
 
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-<meta name="application-name" content="Planilla">
+<meta name="application-name" content="Despachos CCSD">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Planilla">
+<meta name="apple-mobile-web-app-title" content="Despachos CCSD">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="icon" href="icons/icon-192.svg" type="image/svg+xml">
-<link rel="apple-touch-ico
-n" href="icons/icon-192.svg">
+<link rel="apple-touch-icon" href="icons/icon-192.svg">
 
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-
-<link rel="stylesheet" href="css/styles.css?v=1.0.11">
+<link rel="stylesheet" href="css/styles.css?v=1.1.0">
 </head>
 <body>
 
@@ -55,6 +44,7 @@ n" href="icons/icon-192.svg">
       <div class="auth-help-item">Si no puedes ingresar, solicita validacion de cuenta.</div>
     </div>
     <div id="authStatus" class="auth-status warn">Inicia sesion para continuar.</div>
+    <div class="app-version" data-app-version></div>
   </div>
 </div>
 
@@ -68,6 +58,7 @@ n" href="icons/icon-192.svg">
       <button class="btn btn-success" id="btnManualDispatch">Despacho manual</button>
       <span class="pill" id="authUserLabel">No autenticado</span>
       <button class="btn btn-danger hidden" id="btnLogout">Cerrar sesion</button>
+      <span class="app-version" data-app-version></span>
     </div>
   </div>
 
@@ -900,9 +891,11 @@ n" href="icons/icon-192.svg">
   </div>
 </div>
 
-<script src="js/functions.js?v=1.0.11"></script>
-<script src="js/main.js?v=1.0.11"></script>
-<script src="js/pwa.js?v=1.0.11"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js"
+        integrity="sha384-BWcjm9OdFth9TbhCxZPdm+gAOUMAzQy9nmTs12ioXdCcbVnJaPMn+fMUoQCLt60R" crossorigin="anonymous"></script>
+<script src="js/functions.js?v=1.1.0"></script>
+<script src="js/main.js?v=1.1.0"></script>
+<script src="js/pwa.js?v=1.1.0"></script>
 </body>
 </html>
 

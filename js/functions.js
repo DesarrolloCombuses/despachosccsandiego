@@ -39,9 +39,11 @@ const PLANILLA_AFILIADOS_2_COLUMNS = [
 const SUPER_ADMIN_EMAIL = "administrador@combuses.com.co";
 const BASE_USER_EMAIL_RE = /^base\s*([0-9]+)@combuses\.com\.co$/i;
 const ALLOW_PUBLIC_SIGNUP = false;
-if (!window.XLSX) {
-  throw new Error("No cargo XLSX. Verifica conexion a internet o ruta del script.");
-}
+// La version vive en <meta name="app-version"> (la cambia tools/version.py) y se muestra en pantalla.
+const APP_VERSION = document.querySelector('meta[name="app-version"]')?.content || "";
+document.querySelectorAll("[data-app-version]").forEach(el => {
+  el.textContent = APP_VERSION ? `v${APP_VERSION}` : "";
+});
 if (!window.supabase || typeof window.supabase.createClient !== "function") {
   throw new Error("No cargo Supabase JS. Verifica conexion a internet o ruta del script.");
 }
