@@ -607,6 +607,13 @@ input:disabled,select:disabled{background:var(--bg-muted);color:var(--fg-soft);c
 .combo-option .opt-main{font-weight:700;color:var(--fg);font-variant-numeric:tabular-nums}
 .combo-option .opt-sub{font-size:12px;color:var(--fg-muted)}
 .combo-empty{padding:10px;color:var(--fg-muted);font-size:13px;text-align:center}
+.combo-option.disabled{cursor:not-allowed;opacity:.6}
+.combo-option.disabled:hover{background:transparent}
+.combo-section{
+  margin-top:4px;padding:8px 10px 4px;border-top:1px solid var(--line);
+  font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--fg-muted);
+}
+.combo-retry{display:block;margin:8px auto 0}
 .note-input{
   width:100%;
   min-height:130px;

@@ -114,7 +114,6 @@ const manualDispatchInternoList = document.getElementById("manualDispatchInterno
 const manualDispatchBase = document.getElementById("manualDispatchBase");
 const manualDispatchMid = document.getElementById("manualDispatchMid");
 const manualDispatchConductorName = document.getElementById("manualDispatchConductorName");
-const manualDispatchConductorList = document.getElementById("manualDispatchConductorList");
 const manualDispatchDriverId = document.getElementById("manualDispatchDriverId");
 const manualDispatchItinerarySelect = document.getElementById("manualDispatchItinerarySelect");
 const manualDispatchObs = document.getElementById("manualDispatchObs");
@@ -2257,18 +2256,131 @@ function findManualDispatchVehicleByInterno(internoValue){
   return rows.find(row => String(row?.interno || "").trim() === interno) || null;
 }
 
+let manualDispatchConductorBase = "";
+
+// La base del vehiculo solo ordena la lista (sus conductores primero); no oculta a los demas,
+// porque hay conductores sin email en la hoja y de ahi es de donde se saca su base.
 function fillManualDispatchConductorList(baseValue){
-  if (!manualDispatchConductorList) return;
-  const baseCanonical = getBaseCanonical(baseValue || "");
-  const enabled = (driversCatalogRows || [])
-    .filter(row => String(row?.status || "").trim().toUpperCase() === "ENABLED")
-    .filter(row => !baseCanonical || getCsvDriverBase(row) === baseCanonical);
-  manualDispatchConductorList.innerHTML = enabled.map(row => {
+  manualDispatchConductorBase = getBaseCanonical(baseValue || "");
+  renderManualDispatchConductorPanel();
+}
+
+// Busca sin importar tildes ni el orden de las palabras, por nombre, cedula o dr_id.
+// Los inhabilitados (o sin dr_id) se devuelven aparte para avisar por que no se pueden elegir.
+function getManualDispatchConductorMatches(){
+  const query = normalizeDriverName(String(manualDispatchConductorName?.value || "").split("|")[0]);
+  const words = query ? query.split(" ") : [];
+  const matches = row => {
+    if (!words.length) return true;
+    const haystack = normalizeDriverName(`${row?.nombre || ""} ${row?.cedula || ""} ${row?.dr_id || ""}`);
+    return words.every(word => haystack.includes(word));
+  };
+  const isEnabled = row => String(row?.status || "").trim().toUpperCase() === "ENABLED";
+  const catalog = Array.isArray(driversCatalogRows) ? driversCatalogRows : [];
+  const base = manualDispatchConductorBase;
+  const selectable = catalog
+    .filter(row => isEnabled(row) && String(row?.dr_id || "").trim() && matches(row))
+    .sort((a, b) => {
+      const pa = base && getCsvDriverBase(a) === base ? 0 : 1;
+      const pb = base && getCsvDriverBase(b) === base ? 0 : 1;
+      return pa - pb || String(a?.nombre || "").localeCompare(String(b?.nombre || ""), "es");
+    });
+  if (!words.length) return { selectable, blocked: [] };
+  const enabledCedulas = new Set(catalog.filter(isEnabled).map(row => String(row?.cedula || "").trim()).filter(Boolean));
+  const blocked = catalog
+    .filter(row => matches(row) && !selectable.includes(row))
+    .filter(row => isEnabled(row) || !enabledCedulas.has(String(row?.cedula || "").trim()))
+    .map(row => ({ row, reason: isEnabled(row) ? "Sin dr_id en la hoja de conductores" : "Inhabilitado en la hoja de conductores" }));
+  return { selectable, blocked };
+}
+
+// Dibuja el panel desplegable del Conductor, incluyendo los estados de carga y error del CSV.
+function renderManualDispatchConductorPanel(){
+  const panel = document.getElementById("manualDispatchConductorPanel");
+  if (!panel) return;
+  if (!Array.isArray(driversCatalogRows) || !driversCatalogRows.length) {
+    panel.innerHTML = isLoadingDrivers
+      ? `<div class="combo-empty">Cargando conductores...</div>`
+      : `<div class="combo-empty">No se pudo cargar la lista de conductores${driversLoadError ? ` (${escapeHtml(driversLoadError)})` : ""}.`
+        + `<button type="button" class="btn btn-ghost combo-retry">Reintentar</button></div>`;
+    return;
+  }
+  const { selectable, blocked } = getManualDispatchConductorMatches();
+  const html = selectable.slice(0, 200).map(row => {
     const nombre = String(row?.nombre || "").trim();
     const drId = String(row?.dr_id || "").trim();
-    const value = `${nombre} | ${drId}`;
-    return `<option value="${escapeHtml(value)}"></option>`;
-  }).join("");
+    const driverBase = getCsvDriverBase(row);
+    const subParts = [`ID ${drId}`];
+    if (driverBase) subParts.push(formatBaseLabel(driverBase));
+    return `<div class="combo-option" data-conductor="${escapeHtml(`${nombre} | ${drId}`)}">`
+      + `<span class="opt-main">${escapeHtml(nombre)}</span>`
+      + `<span class="opt-sub">${escapeHtml(subParts.join(" | "))}</span>`
+      + `</div>`;
+  });
+  if (blocked.length) {
+    html.push(`<div class="combo-section">No se pueden despachar</div>`);
+    blocked.slice(0, 20).forEach(({ row, reason }) => {
+      html.push(`<div class="combo-option disabled">`
+        + `<span class="opt-main">${escapeHtml(String(row?.nombre || "").trim() || "(sin nombre)")}</span>`
+        + `<span class="opt-sub">${escapeHtml(reason)}</span>`
+        + `</div>`);
+    });
+  }
+  panel.innerHTML = html.length ? html.join("") : `<div class="combo-empty">Sin coincidencias</div>`;
+}
+
+function openManualDispatchConductorPanel(){
+  const panel = document.getElementById("manualDispatchConductorPanel");
+  if (!panel) return;
+  renderManualDispatchConductorPanel();
+  panel.classList.remove("hidden");
+}
+
+function closeManualDispatchConductorPanel(){
+  const panel = document.getElementById("manualDispatchConductorPanel");
+  if (panel) panel.classList.add("hidden");
+}
+
+function pickManualDispatchConductorOption(opt){
+  const value = opt?.getAttribute("data-conductor");
+  if (!value) return; // opcion informativa (inhabilitado / sin dr_id)
+  if (manualDispatchConductorName) manualDispatchConductorName.value = value;
+  closeManualDispatchConductorPanel();
+  applyManualDispatchConductorSelection();
+  refreshManualDispatchHintIfVisible();
+}
+
+function pickManualDispatchInternoOption(opt){
+  if (manualDispatchInterno) manualDispatchInterno.value = opt?.getAttribute("data-interno") || "";
+  closeManualDispatchInternoPanel();
+  applyManualDispatchVehicleSelection();
+  refreshManualDispatchHintIfVisible();
+}
+
+// Teclado de los combos: flechas recorren, Enter elige y Escape cierra el panel.
+// Con el panel abierto, Enter/Escape no llegan al modal (antes Enter enviaba el despacho).
+function handleComboKeydown(ev, panel, pick){
+  if (!panel || panel.classList.contains("hidden")) return;
+  const options = Array.from(panel.querySelectorAll(".combo-option:not(.disabled)"));
+  const current = options.findIndex(opt => opt.classList.contains("active"));
+  if (ev.key === "ArrowDown" || ev.key === "ArrowUp") {
+    ev.preventDefault();
+    if (!options.length) return;
+    const next = ev.key === "ArrowDown"
+      ? Math.min(current + 1, options.length - 1)
+      : Math.max(current - 1, 0);
+    options.forEach(opt => opt.classList.remove("active"));
+    options[next].classList.add("active");
+    options[next].scrollIntoView({ block: "nearest" });
+  } else if (ev.key === "Enter") {
+    ev.preventDefault();
+    ev.stopPropagation();
+    const opt = options[current >= 0 ? current : 0];
+    if (opt) pick(opt);
+  } else if (ev.key === "Escape") {
+    ev.stopPropagation();
+    panel.classList.add("hidden");
+  }
 }
 
 function applyManualDispatchConductorSelection(){
@@ -2323,8 +2435,11 @@ async function openManualDispatchModal(){
   if (!manualDispatchModal || !btnManualDispatchCancel || !btnManualDispatchConfirm) {
     return Promise.resolve({ confirmed: false });
   }
+  // Sin await: si el CSV tarda, el panel del Conductor muestra "Cargando..." y se redibuja al llegar.
+  ensureDriversCatalogFresh();
   await loadVehiculosSonarFromSupabase();
   fillManualDispatchInternoList();
+  closeManualDispatchConductorPanel();
   fillManualDispatchConductorList("");
   if (manualDispatchInterno) manualDispatchInterno.value = "";
   if (manualDispatchBase) manualDispatchBase.value = "";
@@ -2523,19 +2638,41 @@ if (manualDispatchInterno) manualDispatchInterno.addEventListener("focus", openM
   });
   if (internoPanel) internoPanel.addEventListener("click", (ev) => {
     const opt = ev.target.closest(".combo-option");
-    if (!opt) return;
-    if (manualDispatchInterno) manualDispatchInterno.value = opt.getAttribute("data-interno") || "";
-    closeManualDispatchInternoPanel();
-    applyManualDispatchVehicleSelection();
-    refreshManualDispatchHintIfVisible();
+    if (opt) pickManualDispatchInternoOption(opt);
   });
+  if (manualDispatchInterno) manualDispatchInterno.addEventListener("keydown", (ev) => handleComboKeydown(ev, internoPanel, pickManualDispatchInternoOption));
   // Cerrar el panel al hacer click fuera del combo.
   document.addEventListener("click", (ev) => {
     if (internoCombo && !internoCombo.contains(ev.target)) closeManualDispatchInternoPanel();
   });
 }
 if (manualDispatchConductorName) manualDispatchConductorName.addEventListener("change", () => { applyManualDispatchConductorSelection(); refreshManualDispatchHintIfVisible(); });
-if (manualDispatchConductorName) manualDispatchConductorName.addEventListener("input", () => { applyManualDispatchConductorSelection(); refreshManualDispatchHintIfVisible(); });
+if (manualDispatchConductorName) manualDispatchConductorName.addEventListener("input", () => { applyManualDispatchConductorSelection(); refreshManualDispatchHintIfVisible(); openManualDispatchConductorPanel(); });
+if (manualDispatchConductorName) manualDispatchConductorName.addEventListener("focus", openManualDispatchConductorPanel);
+{
+  const conductorArrow = document.getElementById("manualDispatchConductorArrow");
+  const conductorPanel = document.getElementById("manualDispatchConductorPanel");
+  const conductorCombo = document.getElementById("manualDispatchConductorCombo");
+  if (conductorArrow) conductorArrow.addEventListener("click", (ev) => {
+    ev.preventDefault();
+    if (conductorPanel && conductorPanel.classList.contains("hidden")) { openManualDispatchConductorPanel(); manualDispatchConductorName?.focus(); }
+    else { closeManualDispatchConductorPanel(); }
+  });
+  if (conductorPanel) conductorPanel.addEventListener("click", (ev) => {
+    if (ev.target.closest(".combo-retry")) {
+      // stopPropagation: el redibujado saca el boton del DOM y el click de "afuera" cerraria el panel.
+      ev.stopPropagation();
+      loadDriversFromCSV();
+      return;
+    }
+    const opt = ev.target.closest(".combo-option");
+    if (opt) pickManualDispatchConductorOption(opt);
+  });
+  if (manualDispatchConductorName) manualDispatchConductorName.addEventListener("keydown", (ev) => handleComboKeydown(ev, conductorPanel, pickManualDispatchConductorOption));
+  document.addEventListener("click", (ev) => {
+    if (conductorCombo && !conductorCombo.contains(ev.target)) closeManualDispatchConductorPanel();
+  });
+}
 if (manualDispatchItinerarySelect) manualDispatchItinerarySelect.addEventListener("change", refreshManualDispatchHintIfVisible);
 if (dispatchModal) {
   dispatchModal.addEventListener("click", (ev) => {
@@ -2612,6 +2749,9 @@ let driversCatalogRows = []; // [{dr_id, cedula, fleet, nombre, status, email, c
 let assignedByBase = {};    // { "2": Set(["..."]) }
 let basesCatalog = [];
 let isLoadingDrivers = false;
+let driversLoadPromise = null;
+let driversLastLoadedAt = 0;
+let driversLoadError = "";
 let programacionesHistory = [];
 let planillaAfiliadosRows = [];
 let planillaAfiliadosLoading = false;
@@ -5588,22 +5728,92 @@ const FICHO_POSITION_RULES = {
 };
 
 /* ===================== CARGAR CONDUCTORES DESDE CSV ===================== */
-async function loadDriversFromCSV() {
-  if (isLoadingDrivers) return;
+const DRIVERS_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vThNrFZLbNklMFtPeg0wF4TA1vZHnZ4YNMmGcnHfty_RoNuAQw__iV2GMXqTsv36MPiks1ARpYui1JK/pub?gid=0&single=true&output=csv';
+const DRIVERS_REFRESH_MAX_AGE_MS = 5 * 60 * 1000;
+const DRIVERS_LOAD_ATTEMPTS = 3;
+const DRIVERS_RETRY_DELAY_MS = 1500;
+
+// Parser CSV minimo que respeta comillas (campos con comas o saltos de linea dentro).
+function parseCsvText(text, delimiter = ","){
+  const rowsOut = [];
+  let row = [];
+  let field = "";
+  let inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inQuotes) {
+      if (ch === '"' && text[i + 1] === '"') { field += '"'; i++; }
+      else if (ch === '"') inQuotes = false;
+      else field += ch;
+    } else if (ch === '"') {
+      inQuotes = true;
+    } else if (ch === delimiter) {
+      row.push(field);
+      field = "";
+    } else if (ch === "\n" || ch === "\r") {
+      if (ch === "\r" && text[i + 1] === "\n") i++;
+      row.push(field);
+      rowsOut.push(row);
+      row = [];
+      field = "";
+    } else {
+      field += ch;
+    }
+  }
+  if (field !== "" || row.length) {
+    row.push(field);
+    rowsOut.push(row);
+  }
+  return rowsOut.filter(r => r.some(v => String(v).trim() !== ""));
+}
+
+async function fetchDriversCsvText(){
+  let lastError = null;
+  for (let attempt = 1; attempt <= DRIVERS_LOAD_ATTEMPTS; attempt++) {
+    try {
+      const response = await fetch(DRIVERS_CSV_URL, { cache: "no-cache" });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return await response.text();
+    } catch (error) {
+      lastError = error;
+      console.warn(`[conductores] Intento ${attempt}/${DRIVERS_LOAD_ATTEMPTS} fallo:`, error);
+      if (attempt < DRIVERS_LOAD_ATTEMPTS) {
+        await new Promise(resolve => setTimeout(resolve, DRIVERS_RETRY_DELAY_MS * attempt));
+      }
+    }
+  }
+  throw lastError;
+}
+
+// Recarga el catalogo si esta vacio o tiene mas de DRIVERS_REFRESH_MAX_AGE_MS
+// (la app queda abierta horas en el celular y la hoja cambia durante el dia).
+function ensureDriversCatalogFresh(){
+  const stale = !driversLastLoadedAt || (Date.now() - driversLastLoadedAt) > DRIVERS_REFRESH_MAX_AGE_MS;
+  if (!stale && driversCatalogRows.length) return Promise.resolve(true);
+  return loadDriversFromCSV();
+}
+
+// Si ya hay una carga en curso devuelve esa misma promesa, para que quien espera reciba el resultado.
+// Si la descarga falla se conserva el catalogo anterior.
+function loadDriversFromCSV() {
+  if (!driversLoadPromise) {
+    driversLoadPromise = loadDriversFromCSVOnce().finally(() => { driversLoadPromise = null; });
+  }
+  return driversLoadPromise;
+}
+
+async function loadDriversFromCSVOnce() {
   isLoadingDrivers = true;
-  
-  const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vThNrFZLbNklMFtPeg0wF4TA1vZHnZ4YNMmGcnHfty_RoNuAQw__iV2GMXqTsv36MPiks1ARpYui1JK/pub?gid=0&single=true&output=csv';
+  renderManualDispatchConductorPanel();
 
   if (conductoresCsvStatus) conductoresCsvStatus.textContent = "Cargando CSV...";
-  
+
   try {
-    const response = await fetch(csvUrl, { cache: "no-cache" });
-    const csvText = await response.text();
-    const lines = csvText.split('\n').filter(line => line.trim() !== '');
-    
-    const delimiter = lines[0].includes('\t') ? '\t' : ',';
-    const headers = lines[0].split(delimiter).map(h => h.trim());
-    
+    const csvText = await fetchDriversCsvText();
+    const delimiter = (csvText.split('\n')[0] || "").includes('\t') ? '\t' : ',';
+    const lines = parseCsvText(csvText, delimiter);
+    const headers = (lines[0] || []).map(h => String(h).replace(/^﻿/, "").trim());
+
     const drIdIdx = headers.findIndex(h => norm(h) === 'DR_ID');
     const cedulaIdx = headers.findIndex(h => norm(h) === 'CEDULA');
     const fleetIdx = headers.findIndex(h => norm(h) === 'FLEET');
@@ -5611,13 +5821,16 @@ async function loadDriversFromCSV() {
     const emailIdx = headers.findIndex(h => norm(h) === 'EMAIL');
     const statusIdx = headers.findIndex(h => norm(h) === 'STATUS');
     const celularIdx = headers.findIndex(h => norm(h) === 'CELULAR');
-    
+    if (drIdIdx === -1 || nombreIdx === -1) {
+      throw new Error("el CSV no trae las columnas dr_id y nombre");
+    }
+
     const newDriversByBase = {};
     const newDriversCatalogRows = [];
     let totalEnabled = 0;
-    
+
     for (let i = 1; i < lines.length; i++) {
-      const values = lines[i].split(delimiter);
+      const values = lines[i];
       const drId = drIdIdx !== -1 ? String(values[drIdIdx] || "").trim() : "";
       const cedula = cedulaIdx !== -1 ? String(values[cedulaIdx] || "").trim() : "";
       const fleet = fleetIdx !== -1 ? String(values[fleetIdx] || "").trim() : "";
@@ -5654,18 +5867,27 @@ async function loadDriversFromCSV() {
     
     driversByBase = newDriversByBase;
     driversCatalogRows = newDriversCatalogRows;
-    
+    driversLastLoadedAt = Date.now();
+    driversLoadError = "";
+
     if (conductoresCsvStatus) {
       const stamp = new Date().toLocaleString("es-CO");
       conductoresCsvStatus.textContent = `Actualizado: ${stamp} (${totalEnabled} conductores)`;
     }
     refreshConductoresCsvBaseOptions();
     renderConductoresCsvTab();
+    return true;
   } catch (error) {
-    console.error('Error:', error);
-    if (conductoresCsvStatus) conductoresCsvStatus.textContent = `Error: ${error?.message || "consulta fallida"}`;
+    console.error('Error cargando conductores:', error);
+    driversLoadError = error?.message || "consulta fallida";
+    if (conductoresCsvStatus) conductoresCsvStatus.textContent = `Error: ${driversLoadError}`;
+    if (driversCatalogRows.length) {
+      showToast(`No se pudo actualizar la lista de conductores (${driversLoadError}). Se usa la ultima cargada.`, "warn");
+    }
+    return false;
   } finally {
     isLoadingDrivers = false;
+    renderManualDispatchConductorPanel();
   }
 }
 

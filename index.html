@@ -29,7 +29,7 @@ n" href="icons/icon-192.svg">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
-<link rel="stylesheet" href="css/styles.css?v=1.0.9">
+<link rel="stylesheet" href="css/styles.css?v=1.0.10">
 </head>
 <body>
 
@@ -874,8 +874,11 @@ n" href="icons/icon-192.svg">
       <div><strong>MID *</strong><input id="manualDispatchMid" type="text" placeholder="MID" readonly /></div>
       <div>
         <strong>Conductor *</strong>
-        <input id="manualDispatchConductorName" type="text" list="manualDispatchConductorList" placeholder="Buscar conductor..." />
-        <datalist id="manualDispatchConductorList"></datalist>
+        <div class="combo" id="manualDispatchConductorCombo">
+          <input id="manualDispatchConductorName" type="text" autocomplete="off" placeholder="Buscar nombre, cedula o ID..." />
+          <button type="button" class="combo-arrow" id="manualDispatchConductorArrow" aria-label="Ver lista de conductores" tabindex="-1">&#9662;</button>
+          <div class="combo-panel hidden" id="manualDispatchConductorPanel"></div>
+        </div>
       </div>
       <div style="grid-column:1 / -1"><strong>Driver ID *</strong><input id="manualDispatchDriverId" type="text" placeholder="Driver ID" readonly /></div>
       <div style="grid-column:1 / -1">
@@ -897,9 +900,9 @@ n" href="icons/icon-192.svg">
   </div>
 </div>
 
-<script src="js/functions.js?v=1.0.9"></script>
-<script src="js/main.js?v=1.0.9"></script>
-<script src="js/pwa.js?v=1.0.9"></script>
+<script src="js/functions.js?v=1.0.10"></script>
+<script src="js/main.js?v=1.0.10"></script>
+<script src="js/pwa.js?v=1.0.10"></script>
 </body>
 </html>
 
