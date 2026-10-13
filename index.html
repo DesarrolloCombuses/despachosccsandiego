@@ -29,7 +29,7 @@ n" href="icons/icon-192.svg">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
-<link rel="stylesheet" href="css/styles.css?v=1.0.10">
+<link rel="stylesheet" href="css/styles.css?v=1.0.11">
 </head>
 <body>
 
@@ -90,8 +90,8 @@ n" href="icons/icon-192.svg">
           <div class="tab hidden" data-tab="no-despacho">No tuvieron despacho</div>
           <div class="tab hidden" data-tab="fuera-lista">Fuera de lista</div>
           <div class="tab hidden" data-tab="vehiculos-sonar">Vehiculos Sonar</div>
-          <div class="tab" data-tab="despacho-manual">Realizar despacho</div>
-          <div class="tab active" data-tab="despachos-sonar">Despachos Sonar</div>
+          <div class="tab active" data-tab="despacho-manual">Realizar despacho</div>
+          <div class="tab hidden" data-tab="despachos-sonar">Despachos Sonar</div>
           <div class="tab hidden" data-tab="mapa-vehiculos">Mapa vehiculos</div>
           <div class="tab hidden" data-tab="tabla-llegadas">Tabla llegadas</div>
           <div class="tab" data-tab="historial-despachos">Historial despachos</div>
@@ -433,7 +433,7 @@ n" href="icons/icon-192.svg">
         </div>
 
         <!-- Contenido Realizar despacho (manual) -->
-        <div id="tab-despacho-manual" class="tab-content">
+        <div id="tab-despacho-manual" class="tab-content active">
           <div class="row" style="margin-bottom:10px">
             <h3 style="margin:0">Realizar despacho</h3>
           </div>
@@ -444,7 +444,7 @@ n" href="icons/icon-192.svg">
         </div>
 
         <!-- Contenido Despachos Sonar -->
-        <div id="tab-despachos-sonar" class="tab-content active">
+        <div id="tab-despachos-sonar" class="tab-content">
           <div class="row mobile-filters" style="margin-bottom:10px">
             <h3 style="margin:0">Despachos en curso</h3>
             <button class="btn btn-primary" id="btnRefreshDespachosSonar">Actualizar</button>
@@ -900,9 +900,9 @@ n" href="icons/icon-192.svg">
   </div>
 </div>
 
-<script src="js/functions.js?v=1.0.10"></script>
-<script src="js/main.js?v=1.0.10"></script>
-<script src="js/pwa.js?v=1.0.10"></script>
+<script src="js/functions.js?v=1.0.11"></script>
+<script src="js/main.js?v=1.0.11"></script>
+<script src="js/pwa.js?v=1.0.11"></script>
 </body>
 </html>
 

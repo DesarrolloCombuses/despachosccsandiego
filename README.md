@@ -4,12 +4,11 @@ Panel movil PWA enfocado exclusivamente en la operacion de despachos del punto C
 
 ## Funcionalidades incluidas
 
-- **Llegadas Almacentro** (pestana activa por defecto)
-- **Despachos Sonar** (despachos en curso)
+- **Realizar despacho** (pestana activa por defecto): formulario guiado de despacho manual
 - **Historial despachos** (con cancelacion y edicion de pasajeros/observaciones)
 - **Boton Despacho manual** (modal global, accesible desde cualquier pestana)
 
-Las demas pestanas del panel completo (Mapa vehiculos, Tabla llegadas, Asistencia biometrica, Preoperacionales SICOV, etc.) no estan disponibles en esta version recortada.
+Las demas pestanas del panel completo (Llegadas Almacentro, Despachos Sonar, Mapa vehiculos, Tabla llegadas, Asistencia biometrica, Preoperacionales SICOV, etc.) estan ocultas en esta version recortada.
 
 ## PWA optimizada para movil
 
